@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Express + Multer File Upload System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --success: #10b981;
+      --text: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.15) 0px, transparent 50%);
+    }
+
+    .container {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #a5b4fc, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: rgba(15, 23, 42, 0.4);
+      position: relative;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-name {
+      font-size: 14px;
+      color: #cbd5e1;
+      margin-top: 10px;
+      word-break: break-all;
+    }
+
+    button.btn-upload {
+      width: 100%;
+      padding: 14px;
+      margin-top: 24px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    button.btn-upload:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+    }
+
+    .response-card {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .response-card.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      display: block;
+    }
+
+    .response-card.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      display: block;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(99, 102, 241, 0.2);
+      border-radius: 20px;
+      font-size: 12px;
+      color: #a5b4fc;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <span class="badge">POST /upload</span>
+    <h1>Express + Multer Upload</h1>
+    <p class="subtitle">Select an image file and upload using multipart/form-data</p>
+
+    <form id="uploadForm">
+      <div class="upload-zone" id="dropZone">
+        <div class="upload-icon">📁</div>
+        <p style="font-weight: 600;">Choose a file or drag & drop</p>
+        <p class="file-name" id="fileName">No file selected (Key: file)</p>
+        <input type="file" id="fileInput" name="file" accept="image/*">
+      </div>
+
+      <button type="submit" class="btn-upload">Upload File</button>
+    </form>
+
+    <div id="responseCard" class="response-card"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDisplay = document.getElementById('fileName');
+    const uploadForm = document.getElementById('uploadForm');
+    const responseCard = document.getElementById('responseCard');
+
+    fileInput.addEventListener('change', (e) => {
+      if (fileInput.files.length > 0) {
+        fileNameDisplay.textContent = `Selected: ${fileInput.files[0].name}`;
+      } else {
+        fileNameDisplay.textContent = 'No file selected (Key: file)';
+      }
+    });
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!fileInput.files.length) {
+        responseCard.className = 'response-card error';
+        responseCard.innerHTML = '<strong>Error:</strong> Please select a file first!';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          responseCard.className = 'response-card success';
+          responseCard.innerHTML = `
+            <strong>Success!</strong> ${data.message}<br>
+            <small style="color: #94a3b8; display: block; margin-top: 6px;">
+              Saved as: <code>${data.path}</code>
+            </small>
+          `;
+        } else {
+          responseCard.className = 'response-card error';
+          responseCard.innerHTML = `<strong>Error:</strong> ${data.error || 'Upload failed'}`;
+        }
+      } catch (err) {
+        responseCard.className = 'response-card error';
+        responseCard.innerHTML = `<strong>Error:</strong> ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
